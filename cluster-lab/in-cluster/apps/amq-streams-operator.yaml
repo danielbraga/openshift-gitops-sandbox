@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: amq-streams-operator-install
+spec:
+  destination:
+    namespace: openshift-operators
+    server: https://kubernetes.default.svc
+  project: in-cluster
+  source:
+    path: cluster-lab/in-cluster/amq-streams-operator
+    repoURL: https://github.com/danielbraga/openshift-gitops-sandbox
+    targetRevision: main
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: false
