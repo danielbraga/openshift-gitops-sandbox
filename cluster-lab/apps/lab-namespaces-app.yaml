@@ -10,7 +10,7 @@ spec:
   source:
     path: cluster-lab/namespaces/resources
     repoURL: https://github.com/danielbraga/openshift-gitops-sandbox
-    targetRevision: master
+    targetRevision: main
   syncPolicy:
     automated:
       prune: true
