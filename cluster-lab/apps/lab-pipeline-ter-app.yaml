@@ -4,11 +4,11 @@ metadata:
   name: lab-pipeline-ter-app
 spec:
   destination:
-    namespace: default
+    namespace: pipeline-ter
     server: https://kubernetes.default.svc
   project: default
   source:
-    path: cluster-lab/pipelinees/pipeline-ter
+    path: cluster-lab/pipelines/pipeline-ter
     repoURL: https://github.com/danielbraga/openshift-gitops-sandbox
     targetRevision: main
   syncPolicy:
