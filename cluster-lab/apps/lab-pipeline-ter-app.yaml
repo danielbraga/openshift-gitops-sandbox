@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: lab-pipeline-ter-app
+spec:
+  destination:
+    namespace: default
+    server: https://kubernetes.default.svc
+  project: default
+  source:
+    path: cluster-lab/pipelinees/pipeline-ter
+    repoURL: https://github.com/danielbraga/openshift-gitops-sandbox
+    targetRevision: main
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: false

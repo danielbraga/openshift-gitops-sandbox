@@ -1,0 +1,178 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: java-springboot-pipeline
+  namespace: pipeline-ter
+spec:
+  params:
+    - name: GIT_URL
+      description: Gitlab Repository
+      type: string
+    - name: GIT_REVISION
+      default: desenvolvimento
+      description: Gitlab Default Revision
+      type: string
+  tasks:
+    - name: git-clone
+      params:
+        - name: url
+          value: $(params.GIT_URL)
+        - name: revision
+          value: $(params.GIT_REVISION)
+        - name: refspec
+          value: ''
+        - name: submodules
+          value: 'true'
+        - name: depth
+          value: '1'
+        - name: sslVerify
+          value: 'false'
+        - name: crtFileName
+          value: ca-bundle.crt
+        - name: subdirectory
+          value: ''
+        - name: sparseCheckoutDirectories
+          value: ''
+        - name: deleteExisting
+          value: 'true'
+        - name: httpProxy
+          value: ''
+        - name: httpsProxy
+          value: ''
+        - name: noProxy
+          value: ''
+        - name: verbose
+          value: 'true'
+        - name: gitInitImage
+          value: >-
+            registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel8@sha256:a538c423e7a11aae6ae582a411fdb090936458075f99af4ce5add038bb6983e8
+        - name: userHome
+          value: /tekton/home
+      taskRef:
+        kind: ClusterTask
+        name: git-clone
+      workspaces:
+        - name: output
+          workspace: source
+    - name: maven
+      params:
+        - name: MAVEN_IMAGE
+          value: 'docker.io/maven:3.9.7-eclipse-temurin-21-alpine'
+        - name: GOALS
+          value:
+            - package
+            - '-DskipTests=true'
+            - '-DSPRING_PROFILES_ACTIVE=hom'
+            - 'sonar:sonar'
+            - '-Dsonar.host.url='
+            - '-Dsonar.token='
+        - name: MAVEN_MIRROR_URL
+          value: 'http://<mirror-cache>:8081/repository/maven-public'
+        - name: SERVER_USER
+          value: ''
+        - name: SERVER_PASSWORD
+          value: ''
+        - name: PROXY_USER
+          value: ''
+        - name: PROXY_PASSWORD
+          value: ''
+        - name: PROXY_PORT
+          value: ''
+        - name: PROXY_HOST
+          value: ''
+        - name: PROXY_NON_PROXY_HOSTS
+          value: ''
+        - name: PROXY_PROTOCOL
+          value: http
+        - name: CONTEXT_DIR
+          value: .
+      runAfter:
+        - git-clone
+      taskRef:
+        kind: ClusterTask
+        name: maven
+      workspaces:
+        - name: source
+          workspace: source
+        - name: maven-settings
+          workspace: source
+    - name: buildah
+      params:
+        - name: IMAGE
+          value: >-
+            image-registry.openshift-image-registry.svc:5000/namespace-dev/app:latest
+        - name: BUILDER_IMAGE
+          value: >-
+            registry.redhat.io/rhel8/buildah@sha256:0a86ecbdfbe86e9d225b7fe4b090a0dd6d323f8afdfdf2bd933ff223ddb53320
+        - name: STORAGE_DRIVER
+          value: vfs
+        - name: DOCKERFILE
+          value: ./Dockerfile
+        - name: CONTEXT
+          value: .
+        - name: TLSVERIFY
+          value: 'false'
+        - name: FORMAT
+          value: oci
+        - name: BUILD_EXTRA_ARGS
+          value: ''
+        - name: PUSH_EXTRA_ARGS
+          value: ''
+        - name: SKIP_PUSH
+          value: 'false'
+      runAfter:
+        - sonarqube-scanner
+      taskRef:
+        kind: ClusterTask
+        name: buildah
+      workspaces:
+        - name: source
+          workspace: source
+    - name: sonarqube-scanner
+      params:
+        - name: SONAR_HOST_URL
+          value: 'https://sonarqubeh'
+        - name: SONAR_PROJECT_KEY
+          value: project-key-value
+        - name: PROJECT_VERSION
+          value: '1.0'
+        - name: SOURCE_TO_SCAN
+          value: .
+        - name: SONAR_ORGANIZATION
+          value: ACME
+        - name: SONAR_SCANNER_IMAGE
+          value: 'docker.io/sonarsource/sonar-scanner-cli:5.0.1'
+        - name: SONAR_LOGIN_KEY
+          value: ''
+        - name: SONAR_PASSWORD_KEY
+          value: ''
+      runAfter:
+        - maven
+      taskRef:
+        kind: Task
+        name: sonarqube-scanner
+      workspaces:
+        - name: source
+          workspace: source
+        - name: sonar-settings
+          workspace: source
+        - name: sonar-credentials
+          workspace: source
+    - name: openshift-client
+      params:
+        - name: SCRIPT
+          value: >-
+            oc set image deploy/app-name
+            app-name=app-name:latest
+        - name: VERSION
+          value: latest
+      runAfter:
+        - buildah
+      taskRef:
+        kind: ClusterTask
+        name: openshift-client
+      workspaces:
+        - name: manifest-dir
+          workspace: source
+  workspaces:
+    - name: source
