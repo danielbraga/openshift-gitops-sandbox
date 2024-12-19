@@ -12,6 +12,18 @@ spec:
       default: desenvolvimento
       description: Gitlab Default Revision
       type: string
+    - name: APP_NAME
+      description: App name
+      type: string
+    - name: NS_NAME
+      description: Namespace name
+      type: string
+    - name: SPRING_PROFILE
+      description: SpringBoot Profile name
+      type: string
+    - name: JDK_VERSION
+      description: JDK Version
+      type: string
   tasks:
     - name: git-clone
       params:
