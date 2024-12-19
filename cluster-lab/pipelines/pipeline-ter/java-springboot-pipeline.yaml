@@ -2,7 +2,7 @@ apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
   name: java-springboot-pipeline
-  namespace: pipeline-ter
+  namespace: pipeline-ter-cust
 spec:
   params:
     - name: GIT_URL
