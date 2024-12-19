@@ -133,7 +133,7 @@ spec:
         - name: SONAR_HOST_URL
           value: 'https://sonarqubeh'
         - name: SONAR_PROJECT_KEY
-          value: project-key-value
+          value: $(params.APP_NAME)
         - name: PROJECT_VERSION
           value: '1.0'
         - name: SOURCE_TO_SCAN

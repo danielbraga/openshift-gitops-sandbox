@@ -4,7 +4,7 @@ metadata:
   name: lab-pipeline-ter-app
 spec:
   destination:
-    namespace: pipeline-ter
+    namespace: pipeline-ter-cust
     server: https://kubernetes.default.svc
   project: default
   source:
