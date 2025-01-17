@@ -5,24 +5,25 @@ metadata:
   namespace: pipeline-ter-cust
 spec:
   params:
-    - name: GIT_URL
+    - default: 'https://<repository>/<context>/<apps>/<git-source-app>.git'
       description: Gitlab Repository
+      name: GIT_URL
       type: string
-    - name: GIT_REVISION
-      default: desenvolvimento
+    - default: master
       description: Gitlab Default Revision
+      name: GIT_REVISION
       type: string
-    - name: APP_NAME
+    - default: git-source-app
       description: App name
+      name: APP_NAME
       type: string
-    - name: NS_NAME
+    - default: git-source-app-hml
       description: Namespace name
+      name: NS_NAME
       type: string
-    - name: SPRING_PROFILE
-      description: SpringBoot Profile name
-      type: string
-    - name: JDK_VERSION
-      description: JDK Version
+    - default: '11'
+      description: Versao do JDK
+      name: JDK_VERSION
       type: string
   tasks:
     - name: git-clone
@@ -56,8 +57,7 @@ spec:
         - name: verbose
           value: 'true'
         - name: gitInitImage
-          value: >-
-            registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel8@sha256:a538c423e7a11aae6ae582a411fdb090936458075f99af4ce5add038bb6983e8
+          value: 'registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel8@sha256:a538c423e7a11aae6ae582a411fdb090936458075f99af4ce5add038bb6983e8'
         - name: userHome
           value: /tekton/home
       taskRef:
@@ -69,17 +69,13 @@ spec:
     - name: maven
       params:
         - name: MAVEN_IMAGE
-          value: 'docker.io/maven:3.9.7-eclipse-temurin-21-alpine'
+          value: 'docker.io/maven:3.9.7-eclipse-temurin-11-alpine'
         - name: GOALS
           value:
             - package
             - '-DskipTests=true'
-            - '-DSPRING_PROFILES_ACTIVE=hom'
-            - 'sonar:sonar'
-            - '-Dsonar.host.url='
-            - '-Dsonar.token='
         - name: MAVEN_MIRROR_URL
-          value: 'http://<mirror-cache>:8081/repository/maven-public'
+          value: 'http://<mirror>:8081/repository/maven-public'
         - name: SERVER_USER
           value: ''
         - name: SERVER_PASSWORD
@@ -111,11 +107,9 @@ spec:
     - name: buildah
       params:
         - name: IMAGE
-          value: >-
-            image-registry.openshift-image-registry.svc:5000/namespace-dev/app:latest
+          value: 'image-registry.openshift-image-registry.svc:5000/$(params.NS_NAME)/$(params.APP_NAME):$(params.GIT_REVISION)-$(tasks.generate-tag.results.image-tag)'
         - name: BUILDER_IMAGE
-          value: >-
-            registry.redhat.io/rhel8/buildah@sha256:0a86ecbdfbe86e9d225b7fe4b090a0dd6d323f8afdfdf2bd933ff223ddb53320
+          value: 'registry.redhat.io/rhel8/buildah@sha256:0a86ecbdfbe86e9d225b7fe4b090a0dd6d323f8afdfdf2bd933ff223ddb53320'
         - name: STORAGE_DRIVER
           value: vfs
         - name: DOCKERFILE
@@ -133,7 +127,7 @@ spec:
         - name: SKIP_PUSH
           value: 'false'
       runAfter:
-        - sonarqube-scanner
+        - generate-tag
       taskRef:
         kind: ClusterTask
         name: buildah
@@ -151,7 +145,7 @@ spec:
         - name: SOURCE_TO_SCAN
           value: .
         - name: SONAR_ORGANIZATION
-          value: ACME
+          value: ORG
         - name: SONAR_SCANNER_IMAGE
           value: 'docker.io/sonarsource/sonar-scanner-cli:5.0.1'
         - name: SONAR_LOGIN_KEY
@@ -173,9 +167,12 @@ spec:
     - name: openshift-client
       params:
         - name: SCRIPT
-          value: >-
-            oc set image deploy/app-name
-            app-name=app-name:latest
+          value: |-
+            echo "image-registry.openshift-image-registry.svc:5000/$(params.NS_NAME)/$(params.APP_NAME):$(params.GIT_REVISION)-$(tasks.generate-tag.results.image-tag)"
+            
+            oc tag $(params.NS_NAME)/$(params.APP_NAME):latest $(params.NS_NAME)/$(params.APP_NAME):$(params.GIT_REVISION)-$(tasks.generate-tag.results.image-tag)
+            
+            oc -n $(params.NS_NAME) set image deploy/$(params.APP_NAME) $(params.APP_NAME)=image-registry.openshift-image-registry.svc:5000/$(params.NS_NAME)/$(params.APP_NAME):$(params.GIT_REVISION)-$(tasks.generate-tag.results.image-tag)
         - name: VERSION
           value: latest
       runAfter:
@@ -186,5 +183,11 @@ spec:
       workspaces:
         - name: manifest-dir
           workspace: source
+    - name: generate-tag
+      runAfter:
+        - sonarqube-scanner
+      taskRef:
+        kind: Task
+        name: generate-tag
   workspaces:
     - name: source
