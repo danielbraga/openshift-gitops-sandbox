@@ -22,7 +22,6 @@ spec:
   steps:
     - image: 'registry.access.redhat.com/ubi8/ubi-minimal:8.5'
       name: generate-image-tag
-      resources: {}
       script: |
         #!/usr/bin/env bash
         date +"%Y%m%d-%H%M%S" | tee /tmp/date.txt
